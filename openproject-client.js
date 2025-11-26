@@ -465,13 +465,12 @@ async function findExistingWorkPackage(jiraKey, projectId) {
   try {
     const response = await openProjectApi.get("/work_packages", {
       params: {
-        filters: JSON.stringify([
-          { project: { operator: "=", values: [projectId.toString()] } },
+        f: JSON.stringify([
+          { n: "project", o: "=", v: [projectId.toString()] },
           {
-            [`customField${JIRA_ID_CUSTOM_FIELD}`]: {
-              operator: "=",
-              values: [jiraKey],
-            },
+            n: `customField${JIRA_ID_CUSTOM_FIELD}`,
+            o: "=",
+            v: [jiraKey],
           },
         ]),
       },
