@@ -15,6 +15,7 @@ const {
   createWorkPackage,
   updateWorkPackage,
   addComment,
+  addUserToProject,
   uploadAttachment,
   getWorkPackageTypes,
   getWorkPackageStatuses,
@@ -56,6 +57,21 @@ async function getOpenProjectUserId(jiraUser) {
     `No OpenProject user mapping found for Jira user ${jiraUser.displayName}`
   );
   return null;
+}
+
+function getErrors(e) {
+  let errors = [];
+  if (e?.response?.data?._type == "Error") {
+    if (e.response.data.errorIdentifier == "urn:openproject-org:api:v3:errors:MultipleErrors") {
+      for (let subError of e.response.data._embedded.errors) {
+        errors.push(...getErrors({ response: { data: subError } }));
+      } 
+    } else {
+      errors.push({ error: e.response.data.errorIdentifier, details: e.response.data._embedded.details });
+    }
+  }
+
+  return errors;
 }
 
 async function migrateIssues(
@@ -216,7 +232,37 @@ async function migrateIssues(
         workPackage = await updateWorkPackage(existingWorkPackage.id, payload);
       } else {
         console.log("Creating new work package");
-        workPackage = await createWorkPackage(openProjectId, payload);
+        try {
+          workPackage = await createWorkPackage(openProjectId, payload);
+        } catch (e) {
+          // Adding user to project if it's an issue about not being in a project
+          let errors = getErrors(e);
+
+          errors = errors.map(error => {
+            if (error.error == "urn:openproject-org:api:v3:errors:PropertyConstraintViolation") {
+              return error?.details?.attribute;
+            }
+            return null;
+          });
+
+          if (errors.includes("assignee") || errors.includes("responsible")) {
+            let toAdd = {};
+            toAdd[responsibleId] = true;
+            toAdd[assigneeId] = true;
+            let ids = Object.keys(toAdd);
+            
+            console.log(`Adding user${ids.length > 1 ? "s": ""} to project: ${ids.join(", ")}`)
+            for (let id of ids) {
+              await addUserToProject(id, openProjectId);
+            }
+
+            workPackage = await createWorkPackage(openProjectId, payload);
+          } else {
+            // re-throw error otherwise
+            throw e;
+          }
+        }
+        
       }
 
       issueToWorkPackageMap.set(issue.key, workPackage.id);
@@ -280,7 +326,29 @@ async function migrateIssues(
         for (const watcher of watchers.watchers) {
           const watcherId = await getOpenProjectUserId(watcher);
           if (watcherId) {
-            await addWatcher(workPackage.id, watcherId);
+            try {
+              await addWatcher(workPackage.id, watcherId);
+            } catch (e) {
+              // Adding user to project if it's an issue about not being in a project
+              let errors = getErrors(e);
+
+              errors = errors.map(error => {
+                if (error.error == "urn:openproject-org:api:v3:errors:PropertyConstraintViolation") {
+                  return error?.details?.attribute;
+                }
+                return null;
+              });
+
+              if (errors.includes("user")) {
+                console.log(`Adding user ${watcherId} to project ${openProjectId}`)
+                await addUserToProject(watcherId, openProjectId);
+
+                await addWatcher(workPackage.id, watcherId);
+              } else {
+                // re-throw error otherwise
+                throw e;
+              }
+            }
           }
         }
       }

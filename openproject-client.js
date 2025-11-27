@@ -283,6 +283,9 @@ async function addWatcher(workPackageId, userId) {
       console.log(
         `Watcher ${userId} is already watching work package ${workPackageId}`
       );
+    }  else if (error.response?.status == 422) {
+      // User is not yet in project, adding without generating error report.
+      throw error;
     } else {
       console.error(
         `Error adding watcher ${userId} to work package ${workPackageId}:`,
@@ -303,6 +306,36 @@ async function addWatcher(workPackageId, userId) {
           "This could mean insufficient permissions to add watchers"
         );
       }
+      throw error;
+    }
+  }
+}
+
+async function addUserToProject(userId, projectId) {
+  try {
+    await openProjectApi.post("/memberships", {
+      _links: {
+        principal: {
+          href: `/api/v3/users/${userId}`
+        },
+        project: {
+          href: `/api/v3/projects/${projectId}`
+        },
+        roles: [
+          { href: "/api/v3/roles/15" }
+        ]
+      }
+    });
+  } catch (e) {
+    if (e?.response?.status == 422) {
+      // user is already in Project
+      console.log(`user ${userId} already is in project ${projectId}`)
+    } else {
+      console.error(
+        `Error adding user ${userId} to project ${projectId}:`,
+        e.message
+      );
+      throw e;
     }
   }
 }
@@ -516,6 +549,7 @@ module.exports = {
   addComment,
   uploadAttachment,
   addWatcher,
+  addUserToProject,
   listProjects,
   getWorkPackageTypes,
   getWorkPackageStatuses,
