@@ -49,14 +49,19 @@ async function getJiraUsers() {
 
 async function getOpenProjectUsers() {
   try {
-    console.log("\nFetching OpenProject users...");
-    const response = await openProjectApi.get("/users");
-    return response.data._embedded.elements.map((user) => ({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      status: user.status,
-    }));
+    let users = [];
+    let iter = 1;
+    while (true) {
+      let response = await openProjectApi.get("/users", { params: { offset: iter++ } });
+      let iterationUsers = response.data._embedded.elements;
+      users.push(...iterationUsers)
+
+      if (users.length == response.data.total) {
+        break;
+      }
+    }
+    
+    return users;
   } catch (error) {
     console.error("Error fetching OpenProject users:", error.message);
     throw error;

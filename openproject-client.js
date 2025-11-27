@@ -448,13 +448,23 @@ async function getExistingComments(workPackageId) {
 
 async function getOpenProjectUsers() {
   try {
-    const response = await openProjectApi.get("/users");
-    openProjectUsers = response.data._embedded.elements;
+    let users = [];
+    let iter = 1;
     console.log("\nAvailable OpenProject users:");
-    openProjectUsers.forEach((user) => {
-      console.log(`- ${user.name} (ID: ${user.id}, Email: ${user.email})`);
-    });
-    return openProjectUsers;
+    while (true) {
+      let response = await openProjectApi.get("/users", { params: { offset: iter++ } });
+      let iterationUsers = response.data._embedded.elements;
+      iterationUsers.forEach((user) => {
+        console.log(`- ${user.name} (ID: ${user.id}, Email: ${user.email})`);
+        users.push(user);
+      });
+
+      if (users.length == response.data.total) {
+        break;
+      }
+    }
+    
+    return users;
   } catch (error) {
     console.error("Error fetching OpenProject users:", error.message);
     throw error;
