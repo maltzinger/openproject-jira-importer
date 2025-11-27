@@ -463,15 +463,13 @@ async function getOpenProjectUsers() {
 
 async function findExistingWorkPackage(jiraKey, projectId) {
   try {
+    let cfFilter = {};
+    cfFilter[`customField${JIRA_ID_CUSTOM_FIELD}`] = { operator: "=", values: [jiraKey] };
     const response = await openProjectApi.get("/work_packages", {
       params: {
-        f: JSON.stringify([
-          { n: "project", o: "=", v: [projectId.toString()] },
-          {
-            n: `customField${JIRA_ID_CUSTOM_FIELD}`,
-            o: "=",
-            v: [jiraKey],
-          },
+        filters: JSON.stringify([
+          { project: { operator: "=", values: [projectId.toString()] }},
+          cfFilter
         ]),
       },
     });
