@@ -285,6 +285,7 @@ async function addWatcher(workPackageId, userId) {
       );
     }  else if (error.response?.status == 422) {
       // User is not yet in project, adding without generating error report.
+      console.log("Could not add watcher because user is not in Project")
       throw error;
     } else {
       console.error(

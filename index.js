@@ -256,7 +256,9 @@ async function migrateIssues(
               await addUserToProject(id, openProjectId);
             }
 
+            console.log("Re-trying after adding to project...");
             workPackage = await createWorkPackage(openProjectId, payload);
+            console.log("success");
           } else {
             // re-throw error otherwise
             throw e;
@@ -342,8 +344,9 @@ async function migrateIssues(
               if (errors.includes("user")) {
                 console.log(`Adding user ${watcherId} to project ${openProjectId}`)
                 await addUserToProject(watcherId, openProjectId);
-
+                console.log("Re-trying after adding user to Project...");
                 await addWatcher(workPackage.id, watcherId);
+                console.log("success")
               } else {
                 // re-throw error otherwise
                 throw e;
