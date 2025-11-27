@@ -17,3 +17,6 @@ temp/
 # OS files
 .DS_Store
 Thumbs.db
+
+user-mapping.js
+package-lock.json
