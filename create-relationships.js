@@ -21,6 +21,30 @@ const issueToWorkPackageMap = new Map();
 const missingRelationships = new Set();
 
 /**
+ * Defines the priority of relationship types.
+ * Higher numbers indicate higher priority.
+ *
+ * #39: Because OpenProject accepts only a single relationship (whatever the type and direction)
+ * between two work packages, whereas Jira allows multiple different links between the same issues,
+ * we need to decide which one to keep. Chosen strategy is:
+ * - Parent-child relationships take precedence over all others (but should be created separately, see migrate-parents.js)
+ * - Then blocking relationships (blocks/blocked)
+ * - Then duplicates (duplicates/duplicated)
+ * - Then partof/includes (epic links)
+ * - Finally, relates links are the lowest priority
+ * Note:
+ */
+const relationshipPriority = {
+  blocks: 300,
+  blocked: 300,
+  duplicates: 200,
+  duplicated: 200,
+  partof: 100,
+  includes: 100,
+  relates: 0,
+};
+
+/**
  * Check if a parent relationship already exists between two work packages
  * (whatever the direction is).
  * Unfortunately, OpenProject does not expose parent relationships via the /relations endpoint,
@@ -125,9 +149,10 @@ async function checkExistingRelationship(fromId, toId, type) {
     // Add detailed logging about any found relationships
     if (exists && response.data._embedded.elements.length > 0) {
       const relation = response.data._embedded.elements[0];
+      const existingType = relation.type;
       console.log("\nFound existing relationship details:");
       console.log(`- Relation ID: ${relation.id}`);
-      console.log(`- Type: ${relation.type}`);
+      console.log(`- Type: ${existingType}`);
       console.log(
         `- From: ${relation._links.from.title} (ID: ${relation._links.from.href
           .split("/")
@@ -145,6 +170,28 @@ async function checkExistingRelationship(fromId, toId, type) {
             : "reverse"
         }`
       );
+
+      // #39: Check if existing relationship has lower priority than the one we want to create
+      const existingPriority = relationshipPriority[existingType] || 0;
+      const newPriority = relationshipPriority[type] || 0;
+      if (existingPriority < newPriority) {
+        console.log(
+          `Existing relationship type "${existingType}" has lower priority than "${type}", deleting it`
+        );
+        // Delete the existing relationship.
+        // We could have attempted to update (patch) the existing relationship instead,
+        // but we would have needed to carefully handle direction as well,
+        // which would have complicated the logic further.
+        await openProjectApi.delete(`/relations/${relation.id}`);
+        console.log(
+          `Deleted existing relationship ID ${relation.id} of type "${existingType}"`
+        );
+        return false; // Indicate that no relationship now exists
+      } else {
+        console.log(
+          `Existing relationship type "${existingType}" has equal or higher priority than "${type}", keeping it`
+        );
+      }
     }
 
     return exists;
