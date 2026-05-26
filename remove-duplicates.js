@@ -93,8 +93,9 @@ async function findDuplicates(workPackages) {
   let workPackagesWithJiraId = 0;
   let workPackagesWithoutJiraId = 0;
 
+  const jiraIdField = JIRA_ID_CUSTOM_FIELD;
   workPackages.forEach((wp) => {
-    const jiraId = wp[`customField${JIRA_ID_CUSTOM_FIELD}`];
+    const jiraId = jiraIdField ? wp[`customField${jiraIdField}`] : null;
     if (jiraId) {
       workPackagesWithJiraId++;
       if (!groupedByJiraId.has(jiraId)) {

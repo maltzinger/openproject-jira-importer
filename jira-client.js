@@ -3,9 +3,15 @@ const axios = require("axios");
 const path = require("path");
 const fs = require("fs");
 
+
+// Force console.log to also write to stderr
+console.log = (...args) => {
+  process.stderr.write(args.join(" ") + "\n");
+};
+
 // Jira API configuration
 const jiraConfig = {
-  baseURL: `https://${process.env.JIRA_HOST}/rest/api/3`,
+  baseURL: `https://${process.env.JIRA_HOST}/rest/api/2`,
   auth: {
     username: process.env.JIRA_EMAIL,
     password: process.env.JIRA_API_TOKEN,
@@ -32,12 +38,12 @@ const DEFAULT_FIELDS = [
   "assignee",
   "creator",
   "created",
-  "customfield_10014", // Epic Link field
   "parent",
   "watches",
-].join(",");
+];
 
-async function getAllJiraIssues(projectKey, fields = DEFAULT_FIELDS) {
+async function getAllJiraIssues(projectKey, fields = DEFAULT_FIELDS.join(",")) {
+  console.log('getAllJiraIssues');
   try {
     let allIssues = [];
     const maxResults = 100;
@@ -59,14 +65,14 @@ async function getAllJiraIssues(projectKey, fields = DEFAULT_FIELDS) {
     while (true) {
       console.log(`Fetching issues page ${page}...`);
       try {
-        const body = {
+         const body = {
           jql: `project = "${projectKey}" ORDER BY created ASC`,
           maxResults,
           fields: fields.split ? fields.split(",") : fields,
-          expand: "renderedFields",
         };
         if (nextPageToken) body.nextPageToken = nextPageToken;
         const response = await jiraApi.post("/search/jql", body);
+        console.warn(`Response: ${response.body}`);
         const { issues, nextPageToken: newToken } = response.data;
 
         if (!issues || issues.length === 0) {
@@ -82,10 +88,12 @@ async function getAllJiraIssues(projectKey, fields = DEFAULT_FIELDS) {
         }
 
         allIssues = allIssues.concat(issues);
+
         if (!newToken) {
           console.log(`Retrieved all ${allIssues.length} issues`);
           break;
         }
+
         nextPageToken = newToken;
         page++;
       } catch (error) {
@@ -116,7 +124,7 @@ async function getAllJiraIssues(projectKey, fields = DEFAULT_FIELDS) {
 async function getSpecificJiraIssues(
   projectKey,
   issueKeys,
-  fields = DEFAULT_FIELDS
+  fields = DEFAULT_FIELDS.join(",")
 ) {
   try {
     console.log(`Fetching specific issues: ${issueKeys.join(", ")}...`);
@@ -124,9 +132,9 @@ async function getSpecificJiraIssues(
       jql: `key in ("${issueKeys.join('","')}")`,
       maxResults: issueKeys.length,
       fields: fields.split ? fields.split(",") : fields,
-      expand: "renderedFields",
     };
     const response = await jiraApi.post("/search/jql", body);
+    
     return response.data.issues;
   } catch (error) {
     console.error("Error fetching specific Jira issues:", error.message);
@@ -154,6 +162,8 @@ async function downloadAttachment(url, filePath) {
   try {
     const response = await downloadClient.get(url);
     const tempDir = path.dirname(filePath);
+	
+    console.error(url + " " + filePath + "->" + tempDir);
     if (!fs.existsSync(tempDir)) {
       fs.mkdirSync(tempDir, { recursive: true });
     }
@@ -217,6 +227,50 @@ async function listProjects() {
   }
 }
 
+let jiraFieldsCache = null;
+let jiraEpicLinkFieldId = null;
+
+async function getJiraCustomFields() {
+  if (jiraFieldsCache) return jiraFieldsCache;
+  try {
+    const response = await jiraApi.get("/field");
+    const fields = response.data;
+    jiraFieldsCache = fields.filter((f) => f.custom);
+    return jiraFieldsCache;
+  } catch (error) {
+    console.error("Error fetching Jira fields:", error.message);
+    return [];
+  }
+}
+
+async function getJiraEpicLinkFieldId() {
+  if (jiraEpicLinkFieldId) return jiraEpicLinkFieldId;
+  if (process.env.JIRA_EPIC_LINK_FIELD) {
+    jiraEpicLinkFieldId = process.env.JIRA_EPIC_LINK_FIELD;
+    return jiraEpicLinkFieldId;
+  }
+  try {
+    const fields = await getJiraCustomFields();
+    const epicLink = fields.find(
+      (f) => f.name === "Epic Link" || f.name === "Epic Name"
+    );
+    if (epicLink) {
+      jiraEpicLinkFieldId = epicLink.id;
+      return jiraEpicLinkFieldId;
+    }
+  } catch (error) {
+    console.error("Error resolving epic link field:", error.message);
+  }
+  jiraEpicLinkFieldId = "customfield_10014";
+  return jiraEpicLinkFieldId;
+}
+
+async function buildDefaultFieldString() {
+  const epicLinkId = await getJiraEpicLinkFieldId();
+  const fields = [...DEFAULT_FIELDS, epicLinkId];
+  return fields.join(",");
+}
+
 async function getIssueWatchers(issueKey) {
   try {
     console.log(`Fetching watchers for Jira issue ${issueKey}...`);
@@ -253,5 +307,8 @@ module.exports = {
   downloadAttachment,
   listProjects,
   getIssueWatchers,
+  getJiraCustomFields,
+  getJiraEpicLinkFieldId,
+  buildDefaultFieldString,
   DEFAULT_FIELDS,
 };

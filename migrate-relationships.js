@@ -1,6 +1,10 @@
 require("dotenv").config();
 const { createRelationships } = require("./create-relationships");
-const { getAllJiraIssues, getSpecificJiraIssues } = require("./jira-client");
+const {
+  getAllJiraIssues,
+  getSpecificJiraIssues,
+  buildDefaultFieldString,
+} = require("./jira-client");
 const {
   getOpenProjectWorkPackages: getOpenProjectWorkPackagesFromClient,
 } = require("./openproject-client");
@@ -49,9 +53,10 @@ async function migrateRelationships(
     console.log(`Found ${Object.keys(mapping).length} mapped work packages`);
 
     // Get Jira issues with their relationships
+    const fields = await buildDefaultFieldString();
     const issues = specificIssues
-      ? await getSpecificJiraIssues(jiraProjectKey, specificIssues)
-      : await getAllJiraIssues(jiraProjectKey);
+      ? await getSpecificJiraIssues(jiraProjectKey, specificIssues, fields)
+      : await getAllJiraIssues(jiraProjectKey, fields);
     console.log(`Found ${issues.length} Jira issues to process`);
 
     // Create relationships
@@ -71,12 +76,9 @@ if (!jiraProjectKey || !openProjectId) {
   console.log(
     "Usage: node migrate-relationships.js JIRA_PROJECT_KEY OPENPROJECT_ID [ISSUE1,ISSUE2,...]"
   );
-  console.log("Example: node migrate-relationships.js CLD 9");
+  console.log("Example: node migrate-relationships.js YOUR_PROJECT_KEY YOUR_OP_PROJECT_ID");
   console.log(
-    "Example with specific issues: node migrate-relationships.js CLD 9 CLD-123,CLD-124"
-  );
-  console.log(
-    "Note: Use 'all' as OPENPROJECT_ID to include all projects (useful for cross-project links)"
+    "Example with specific issues: node migrate-relationships.js YOUR_PROJECT_KEY YOUR_OP_PROJECT_ID KEY-123,KEY-124"
   );
   process.exit(1);
 }

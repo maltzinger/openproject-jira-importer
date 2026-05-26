@@ -107,7 +107,7 @@ const projectId = process.argv[2];
 
 if (!projectId) {
   console.log("Usage: node delete-relationships.js PROJECT_ID");
-  console.log("Example: node delete-relationships.js 1");
+  console.log("Example: node delete-relationships.js YOUR_OP_PROJECT_ID");
   process.exit(1);
 }
 

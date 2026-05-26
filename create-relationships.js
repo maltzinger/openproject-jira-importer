@@ -1,5 +1,6 @@
 require("dotenv").config();
 const axios = require("axios");
+const { getJiraEpicLinkFieldId } = require("./jira-client");
 
 // OpenProject API configuration
 const openProjectConfig = {
@@ -16,6 +17,15 @@ const openProjectApi = axios.create(openProjectConfig);
 
 // Store issue key to work package ID mapping
 const issueToWorkPackageMap = new Map();
+
+let resolvedEpicLinkField = null;
+
+async function getEpicLinkFieldId() {
+  if (!resolvedEpicLinkField) {
+    resolvedEpicLinkField = await getJiraEpicLinkFieldId();
+  }
+  return resolvedEpicLinkField;
+}
 
 // Track missing relationships to retry later
 const missingRelationships = new Set();
@@ -260,14 +270,17 @@ async function createRelationship(fromId, toId, type) {
 }
 
 async function handleRelationships(issue) {
-  if (!issue.fields.issuelinks && !issue.fields.customfield_10014) return;
+  const epicLinkField = await getEpicLinkFieldId();
+  const epicLinkValue = issue.fields[epicLinkField];
+
+  if (!issue.fields.issuelinks && !epicLinkValue) return;
 
   const fromWorkPackageId = issueToWorkPackageMap.get(issue.key);
   if (!fromWorkPackageId) return;
 
   // Handle epic link first
-  if (issue.fields.customfield_10014) {
-    const epicKey = issue.fields.customfield_10014;
+  if (epicLinkValue) {
+    const epicKey = epicLinkValue;
     const epicWorkPackageId = issueToWorkPackageMap.get(epicKey);
     if (epicWorkPackageId) {
       await createRelationship(fromWorkPackageId, epicWorkPackageId, "partof");
