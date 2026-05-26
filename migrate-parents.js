@@ -19,8 +19,9 @@ async function migrateParents(jiraProjectKey, openProjectId, specificIssues) {
 
   // Create a map of Jira keys to work package IDs
   const jiraKeyToWorkPackageId = new Map();
+  const jiraIdField = JIRA_ID_CUSTOM_FIELD;
   workPackages.forEach((wp) => {
-    const jiraKey = wp[`customField${JIRA_ID_CUSTOM_FIELD}`];
+    const jiraKey = jiraIdField ? wp[`customField${jiraIdField}`] : null;
     if (jiraKey) {
       jiraKeyToWorkPackageId.set(jiraKey, wp.id);
     }
@@ -55,7 +56,7 @@ async function migrateParents(jiraProjectKey, openProjectId, specificIssues) {
   for (const issue of jiraIssues) {
     try {
       console.log(`\nProcessing ${issue.key}...`);
-
+      console.log(`\nProcessing Content ${issue}...`);
       // Check for parent field
       const parentKey = issue.fields.parent?.key;
       if (!parentKey) {
