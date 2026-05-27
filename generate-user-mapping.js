@@ -44,6 +44,10 @@ async function generateMapping() {
     // Fetch users from both systems
     const jiraUsers = await getJiraUsers();
     const openProjectUsers = await getOpenProjectUsers();
+    const openProjectUsersByMail = {};
+    for (const openProjectUser of openProjectUsers) {
+      openProjectUsersByMail[openProjectUser.email] = openProjectUser;
+    }
 
     console.log("\nJira Users:");
     jiraUsers.forEach((user) => {
@@ -83,14 +87,21 @@ async function generateMapping() {
 
       let choices = openProjectChoices;
       // #31: Pre-fill existing mapping if available
+      let existingAnswer = null;
       if (existingMapping) {
-        const existingAnswer = openProjectChoices.find(
+        existingAnswer = openProjectChoices.find(
           (choice) => choice.value === existingMapping[jiraUser.accountId]
         );
         if (existingAnswer) {
           // Add existing answer first so that it appears selected
           choices = [existingAnswer, ...openProjectChoices];
         }
+      }
+
+      // Pre Select an open project user with the same email address
+      if ((!existingAnswer) && jiraUser.emailAddress && openProjectUsersByMail[jiraUser.emailAddress]) {
+        const foundUser = openProjectUsersByMail[jiraUser.emailAddress];
+        choices = [ { name: foundUser.name, value: foundUser.id }, ...openProjectChoices ]
       }
 
       const answer = await inquirer.prompt([
