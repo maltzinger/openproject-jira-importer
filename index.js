@@ -31,6 +31,8 @@ const {
   getWorkPackagePriorities,
   addWatcher,
   getCustomFieldOptionsMap,
+  createOpenProjectUser,
+  getRoleList,
 } = require("./openproject-client");
 
 // Load custom field mapping (graceful fallback if not configured)
