@@ -75,14 +75,14 @@ async function getOpenProjectUserId(jiraUser) {
 
   if (createMissingUsers && jiraUser.emailAddress) {
     console.log("Creating new user");
-    
+
     const newUser = await createOpenProjectUser(jiraUser);
     userMapping[jiraUser.accountId] = newUser.id;
     saveMapping(userMapping);
+    return newUser.id;
   }
 
   return null;
-}
 
 async function migrateIssues(
   jiraProjectKey,

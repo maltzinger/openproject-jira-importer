@@ -184,11 +184,14 @@ async function setParentWorkPackage(childId, parentId) {
  * @returns The response of the open project API
  */
 async function createOpenProjectUser(jiraUser) {
-  const nameParts = jiraUser.displayName.split(" ");
+  const nameParts = (jiraUser.displayName || "").trim().split(/\s+/).filter(Boolean);
+  const firstName = nameParts.shift() || jiraUser.emailAddress;
+  const lastName = nameParts.join(" ") || "-";
+
   const response = await openProjectApi.post("/users", {
     login: jiraUser.emailAddress,
-    firstName: nameParts[0],
-    lastName: nameParts[1],
+    firstName,
+    lastName,
     email: jiraUser.emailAddress,
     status: "invited",
   });
@@ -218,7 +221,7 @@ async function createWorkPackage(projectId, payload, missingMembers = { add: fal
 }
 
 /**
- * Reads the problem Details of an OpenProject Response. If the Cause of the Problem is "user is not a mamber of this project", it returns a list of _link-Properties that contain the offending user.
+ * Reads the problem Details of an OpenProject Response. If the Cause of the Problem is "user is not a member of this project", it returns a list of _link-Properties that contain the offending user.
  * @param {object} errorDetails The error details from the OpenProject-API
  * @returns {string[]} The offending properties in the `_links` object.
  */
@@ -241,17 +244,17 @@ function getMissingMembers(errorDetails) {
 }
 
 /**
- * Reads the problem details of an OpenProject response and determines if the cause of the problem is, taht a user is not Member of a project.
+ * Reads the problem details of an OpenProject response and determines if the cause of the problem is, that a user is not Member of a project.
  * @param {object} errorDetails 
  * @returns {boolean} Whether the error was caused by non-membership of a project or not.
  */
 function isMemberError(errorDetails) {
+  const attribute = errorDetails?._embedded?.details?.attribute;
+
   return (
-    errorDetails.errorIdentifier ===
+    errorDetails?.errorIdentifier ===
       "urn:openproject-org:api:v3:errors:PropertyConstraintViolation" &&
-    (errorDetails._embedded.details.attribute === "assignee" ||
-      errorDetails._embedded.details.attribute === "responsible" ||
-      errorDetails._embedded.details.attribute === "user")
+    ["assignee", "responsible", "user"].includes(attribute)
   );
 }
 
