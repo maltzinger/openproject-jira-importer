@@ -36,7 +36,7 @@ const typeMapping = {
   Epic: "Epic",
   Feature: "Feature",
   Milestone: "Milestone",
-};
+};    
 
 // Map Jira statuses to OpenProject statuses
 const statusMapping = {
@@ -208,7 +208,7 @@ async function createWorkPackage(projectId, payload, missingMembers = { add: fal
   } catch (error) {
     console.error("Error creating work package:", error.message);
     if (error?.response?.data && missingMembers.add) {
-      if (addMissingMembers(error.response.data, newPayload, missingMembers.role, newPayload._links.project.href)) {
+      if (await addMissingMembers(error.response.data, newPayload, missingMembers.role, newPayload._links.project.href)) {
         console.log("retrying...");
         return (await openProjectApi.post("/work_packages", newPayload)).data;
       } else {
@@ -332,7 +332,7 @@ async function updateWorkPackage(workPackageId, payload, missingMembers = { add:
     );
     if (error.response?.data) {
       if (missingMembers.add && project !== null) {
-        if (addMissingMembers(error.response.data, updatePayload, missingMembers.role, project)) {
+        if (await addMissingMembers(error.response.data, updatePayload, missingMembers.role, project)) {
           console.log("Retrying...");
           return (await openProjectApi.patch(`/work_packages/${workPackageId}`, updatePayload)).data;
         } else {
@@ -382,7 +382,6 @@ async function uploadAttachment(workPackageId, filePath, fileName, mimeType) {
       formData,
       {
         headers: {
-          ...openProjectConfig.headers,
           "Content-Type": "multipart/form-data",
         },
       }
