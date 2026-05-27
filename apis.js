@@ -1,5 +1,6 @@
+require("dotenv").config();
 const axios = require("axios");
-const path = require("path");
+const https = require("https");
 
 // OpenProject API configuration
 const openProjectConfig = {
@@ -11,6 +12,12 @@ const openProjectConfig = {
     "Content-Type": "application/json",
   },
 };
+
+if (process.env.NODE_EXTRA_CA_CERTS) {
+  openProjectConfig.httpsAgent = new https.Agent({
+    allowPartialTrustChain: true,
+  });
+}
 
 const openProjectApi = axios.create(openProjectConfig);
 
