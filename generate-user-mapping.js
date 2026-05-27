@@ -120,15 +120,7 @@ async function generateMapping() {
       }
     }
 
-    // Save mapping to file
-    const mappingContent = `// Generated user mapping - ${new Date().toISOString()}
-const userMapping = ${JSON.stringify(mapping, null, 2)};
-
-module.exports = userMapping;
-`;
-
-    fs.writeFileSync(path.join(__dirname, "user-mapping.generated.js"), mappingContent);
-    console.log("\nUser mapping has been saved to user-mapping.generated.js");
+    saveMapping(mapping);
 
     return mapping;
   } catch (error) {
@@ -137,9 +129,21 @@ module.exports = userMapping;
   }
 }
 
+function saveMapping(mapping) {
+  // Save mapping to file
+    const mappingContent = `// Generated user mapping - ${new Date().toISOString()}
+const userMapping = ${JSON.stringify(mapping, null, 2)};
+
+module.exports = userMapping;
+`;
+
+    fs.writeFileSync(path.join(__dirname, "user-mapping.generated.js"), mappingContent);
+    console.log("\nUser mapping has been saved to user-mapping.generated.js");
+}
+
 // If running directly (not imported)
 if (require.main === module) {
   generateMapping().catch(console.error);
 }
 
-module.exports = { generateMapping };
+module.exports = { generateMapping, saveMapping };
