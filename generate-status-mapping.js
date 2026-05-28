@@ -12,7 +12,7 @@ async function generateMapping() {
     let defaultStatus = null;
 
     const choices = [
-        { name: "Don't map this Status", value: null },
+        { name: "Use default status", value: null },
         ...opStatuses.map((status) => { return { name: status.name, value: status._links.self.href } })
     ];
 
@@ -50,6 +50,8 @@ async function generateMapping() {
 
         if (answer.openProjectStatus !== null) {
             statusMapping[jiraStatus.id] = answer.openProjectStatus;
+        } else if (statusMapping[jiraStatus.id]) {
+            delete statusMapping[jiraStatus.id];
         }
     }
 
@@ -64,10 +66,10 @@ function preSelect(value, choices) {
     }
 
     const foundAnswer = choices.find((option) => option.value == value);
-    if (foundAnswer === null) {
+    if (!foundAnswer) {
         return choices;
     }
-    return [ foundAnswer, ...choices ];
+    return [ foundAnswer, ...choices.filter((option) => option !== foundAnswer) ];
 }
 
 async function saveMapping (mapping, defaultStatus) {
@@ -80,7 +82,7 @@ module.exports = { statusMapping, defaultStatus };
 `;
     
     await fs.writeFile(path.join(__dirname, "status-mapping.generated.js"), mappingContent);
-    console.log("\nUser mapping has been saved to status-mapping.generated.js");
+    console.log("\nStatus mapping has been saved to status-mapping.generated.js");
 }
 
 // If running directly (not imported)
