@@ -85,6 +85,7 @@ async function getOpenProjectUserId(jiraUser) {
   }
 
   return null;
+}
 
 async function migrateIssues(
   jiraProjectKey,

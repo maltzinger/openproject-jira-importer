@@ -179,9 +179,9 @@ async function setParentWorkPackage(childId, parentId) {
 }
 
 /**
- * Create an Open project user with name and email based on the given jira user
+ * Create an OpenProject user with name and email based on the given Jira user
  * @param {object} jiraUser The Jira user from the Jira API
- * @returns The response of the open project API
+ * @returns The response of the OpenProject API
  */
 async function createOpenProjectUser(jiraUser) {
   const nameParts = (jiraUser.displayName || "").trim().split(/\s+/).filter(Boolean);

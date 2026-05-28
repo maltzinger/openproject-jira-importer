@@ -46,7 +46,8 @@ async function generateMapping() {
     const openProjectUsers = await getOpenProjectUsers();
     const openProjectUsersByMail = {};
     for (const openProjectUser of openProjectUsers) {
-      openProjectUsersByMail[openProjectUser.email] = openProjectUser;
+      if (!openProjectUser.email) continue; 
+      openProjectUsersByMail[openProjectUser.email.toLowerCase()] = openProjectUser;
     }
 
     console.log("\nJira Users:");
@@ -99,9 +100,9 @@ async function generateMapping() {
       }
 
       // Pre Select an open project user with the same email address
-      if ((!existingAnswer) && jiraUser.emailAddress && openProjectUsersByMail[jiraUser.emailAddress]) {
-        const foundUser = openProjectUsersByMail[jiraUser.emailAddress];
-        choices = [ { name: foundUser.name, value: foundUser.id }, ...openProjectChoices ]
+      if ((!existingAnswer) && jiraUser.emailAddress && openProjectUsersByMail[jiraUser.emailAddress.toLowerCase()]) {
+        const foundUser = openProjectUsersByMail[jiraUser.emailAddress.toLowerCase()];
+        choices = [ { name: `${foundUser.name} (${foundUser.email})`, value: foundUser.id }, ...openProjectChoices ]
       }
 
       const answer = await inquirer.prompt([
