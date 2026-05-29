@@ -295,12 +295,19 @@ async function addMissingMembers(errorDetails, payload, role, project) {
   const missingMembers = getMissingMembers(errorDetails);
   if (missingMembers.length != 0) {
     console.log("Operation failed because Users were not members of project. Adding...");
+    const addedHrefs = [];
     for (const member of missingMembers) {
+      const memberHref = payload._links[member].href;
+      if (addedHrefs.includes(memberHref)) {
+        continue;
+      }
+
       await addMember(
         project,
-        payload._links[member].href,
+        memberHref,
         role,
       );
+      addedHrefs.push(memberHref);
     }
     return true;
   }
@@ -379,12 +386,7 @@ async function uploadAttachment(workPackageId, filePath, fileName, mimeType) {
 
     const response = await openProjectApi.post(
       `/work_packages/${workPackageId}/attachments`,
-      formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      }
+      formData
     );
     return response.data;
   } catch (error) {
